@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Item, ItemList } from './types';
-import { ThemeProvider } from './contexts/ThemeContext';
+import { useTheme } from './contexts/ThemeContext';
 import { ThemeSwitch } from './components/ThemeSwitch';
 
-function AppContent() {
+function App() {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { theme } = useTheme();
 
   useEffect(() => {
     fetchItems();
@@ -27,77 +28,92 @@ function AppContent() {
     }
   };
 
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center dark:bg-gray-900">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-    </div>
-  );
-
-  if (error) return (
-    <div className="min-h-screen flex items-center justify-center dark:bg-gray-900">
-      <div className="bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-100 px-4 py-3 rounded relative" role="alert">
-        <strong className="font-bold">Error: </strong>
-        <span className="block sm:inline">{error}</span>
-      </div>
-    </div>
-  );
-
   const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'completed':
-        return 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-100';
-      case 'in_progress':
-        return 'bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-100';
-      default:
-        return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100';
-    }
+    const colors = {
+      completed: {
+        light: 'bg-green-100 text-green-800 border-green-200',
+        dark: 'bg-green-900 text-green-100 border-green-800'
+      },
+      in_progress: {
+        light: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+        dark: 'bg-yellow-900 text-yellow-100 border-yellow-800'
+      },
+      pending: {
+        light: 'bg-gray-100 text-gray-800 border-gray-200',
+        dark: 'bg-gray-700 text-gray-100 border-gray-600'
+      }
+    };
+
+    const statusKey = status.toLowerCase() as keyof typeof colors;
+    return colors[statusKey]?.[theme] || colors.pending[theme];
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center dark:bg-gray-900 transition-colors duration-200">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary dark:border-blue-400"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center dark:bg-gray-900 transition-colors duration-200">
+        <div className="bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-100 px-4 py-3 rounded-lg shadow-sm" role="alert">
+          <strong className="font-bold">Error: </strong>
+          <span className="block sm:inline">{error}</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8 transition-colors duration-200">
+    <div className={`min-h-screen transition-colors duration-200 ${
+      theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'
+    }`}>
       <ThemeSwitch />
-      <div className="max-w-7xl mx-auto">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white sm:text-4xl">
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <header className="text-center mb-12">
+          <h1 className="text-4xl font-bold tracking-tight dark:text-white transition-colors duration-200">
             Items List
           </h1>
-          <p className="mt-3 max-w-2xl mx-auto text-xl text-gray-500 dark:text-gray-400 sm:mt-4">
+          <p className="mt-4 text-xl text-gray-600 dark:text-gray-400 transition-colors duration-200">
             Manage and track your items
           </p>
-        </div>
-        
-        <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        </header>
+
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => (
-            <div
+            <article
               key={item.id}
-              className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg hover:shadow-md transition-all duration-200"
+              className={`rounded-lg shadow-sm overflow-hidden transition-all duration-200 ${
+                theme === 'dark' 
+                  ? 'bg-gray-800 hover:bg-gray-750' 
+                  : 'bg-white hover:shadow-md'
+              }`}
             >
-              <div className="px-4 py-5 sm:p-6">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white truncate">
+              <div className="p-6">
+                <h2 className="text-xl font-semibold mb-2 dark:text-white transition-colors duration-200">
                   {item.name}
                 </h2>
-                <p className="mt-2 text-gray-600 dark:text-gray-300">
+                <p className="text-gray-600 dark:text-gray-300 mb-4 transition-colors duration-200">
                   {item.description}
                 </p>
-                <div className="mt-4">
-                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(item.status)}`}>
+                <div className="flex items-center justify-between">
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(item.status)} transition-colors duration-200`}>
                     {item.status.replace('_', ' ')}
+                  </span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400 transition-colors duration-200">
+                    ID: {item.id}
                   </span>
                 </div>
               </div>
-            </div>
+            </article>
           ))}
         </div>
       </div>
     </div>
-  );
-}
-
-function App() {
-  return (
-    <ThemeProvider>
-      <AppContent />
-    </ThemeProvider>
   );
 }
 
