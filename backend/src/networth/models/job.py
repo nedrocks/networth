@@ -30,6 +30,28 @@ class JobBase(NWBase):
             raise ValueError("End date must be after start date")
         return self
 
+    def add_base_salary(self, salary: PeriodicIncomeSource) -> Self:
+        self.base_salary.add_source(salary)
+        return self
+
+    def add_bonus_salary(self, bonus_salary: PeriodicIncomeSource) -> Self:
+        if self.bonus_salary is None:
+            self.bonus_salary = ModifiablePeriodicIncomeSource(
+                name="Bonus",
+                description="Bonus salary",
+                sources=[bonus_salary],
+            )
+        self.bonus_salary.add_source(bonus_salary)
+        return self
+
+    def add_stock_income(self, stock_income: PeriodicIncomeSource) -> Self:
+        self.stock_income.append(stock_income)
+        return self
+
+    def add_signing_bonus(self, signing_bonus: SingletonIncomeSource) -> Self:
+        self.signing_bonus.append(signing_bonus)
+        return self
+
 
 class Job(JobBase):
     pass

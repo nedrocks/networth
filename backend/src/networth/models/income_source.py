@@ -7,17 +7,18 @@ from networth.models.currency import Currency
 
 
 class BaseIncomeSource(NWBase):
-    amt: "Currency"
     name: str
     description: str
 
 
 class SingletonIncomeSource(BaseIncomeSource):
     income_date: date
+    amt: "Currency"
 
 
 class PeriodicIncomeSource(BaseIncomeSource):
     period: timedelta
+    amt: "Currency"
 
     income_start_date: date
     income_end_date: date
@@ -59,8 +60,11 @@ class ModifiablePeriodicIncomeSource(BaseIncomeSource):
         for i in range(1, len(sources)):
             if sources[i].income_start_date < sources[i - 1].income_end_date:
                 raise ValueError("Sources must be in order and not overlap")
-            if (
-                sources[i].income_start_date - sources[i - 1].income_end_date
-            ).days != 1:
+            if (sources[i].income_start_date - sources[i - 1].income_end_date).days > 1:
                 raise ValueError("Sources must be contiguous")
         return sources
+
+    def add_source(self, source: PeriodicIncomeSource) -> Self:
+        self.sources[-1].income_end_date = source.income_start_date - timedelta(days=1)
+        self.sources.append(source)
+        return self

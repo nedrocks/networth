@@ -97,7 +97,6 @@ def test_modifiable_periodic_income_source():
 
     # Test valid creation
     income = ModifiablePeriodicIncomeSource(
-        amt=sample_currency,
         name="Career",
         description="Career progression",
         sources=[source1, source2],
@@ -116,7 +115,6 @@ def test_modifiable_periodic_income_source():
 
     with pytest.raises(ValueError, match="Sources must be in order and not overlap"):
         ModifiablePeriodicIncomeSource(
-            amt=sample_currency,
             name="Invalid",
             description="Invalid sources",
             sources=[source1, overlapping_source],
@@ -134,7 +132,6 @@ def test_modifiable_periodic_income_source():
 
     with pytest.raises(ValueError, match="Sources must be contiguous"):
         ModifiablePeriodicIncomeSource(
-            amt=sample_currency,
             name="Invalid",
             description="Invalid sources",
             sources=[source1, gap_source],
