@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from models import Item, ItemList
+from networth.api.job import router as job_router
+from networth.models import Item, ItemList
 
 app = FastAPI()
 
@@ -13,6 +14,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(job_router, tags=["jobs"])
+
 # Sample data
 items = [
     Item(id=1, name="Task 1", description="Complete the project", status="pending"),
@@ -20,10 +23,13 @@ items = [
     Item(id=3, name="Task 3", description="Deploy to production", status="in_progress"),
 ]
 
+
 @app.get("/api/items", response_model=ItemList)
 async def get_items():
     return ItemList(items=items)
 
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -25,10 +25,10 @@ fi
 
 # Create virtual environment
 echo "📦 Creating Python virtual environment..."
-python3 -m venv backend/venv
+python3 -m venv backend/.venv
 
 # Activate virtual environment
-source backend/venv/bin/activate
+source backend/.venv/bin/activate
 
 # Install Python dependencies
 echo "📦 Installing Python dependencies..."
