@@ -1,4 +1,4 @@
-from pydantic import Field
+from pydantic import BaseModel, Field
 from enum import Enum
 
 from networth.models.base import NWBase
@@ -26,7 +26,7 @@ CURRENCY_CONFIGS = {
 }
 
 
-class Currency(NWBase):
+class Currency(BaseModel):
     """
     Represents a currency with its code and amount in minimum units (e.g., cents for USD)
     """
@@ -36,6 +36,9 @@ class Currency(NWBase):
         default=0,
         description="The monetary amount in minimum currency units (e.g., cents for USD)",
     )
+
+    def __str__(self) -> str:
+        return self.format()
 
     def get_base_units(self) -> float:
         """Convert the amount from minimum units to base units (e.g., dollars from cents)"""

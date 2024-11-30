@@ -1,206 +1,74 @@
-from datetime import date, timedelta
+from datetime import date
+from networth.models.compensation_package import (
+    BaseSalaryChange,
+    BonusPayment,
+    CompensationPackage,
+    SigningBonus,
+    StockGrant,
+    VestingScheduleType,
+)
+from networth.models.job import Job
 import pytest
 
 from networth.models.job import Job
-from networth.models.income_source import (
-    ModifiablePeriodicIncomeSource,
-    PeriodicIncomeSource,
-    SingletonIncomeSource,
-)
 from networth.models.currency import Currency, CurrencyCode
 
 
 @pytest.fixture
-def sample_periodic_source():
-    return PeriodicIncomeSource(
-        amt=Currency(code=CurrencyCode.USD, amount=1000000),  # $10,000
-        name="Base Salary 2024",
-        description="2024 base salary",
-        period=timedelta(days=14),  # Biweekly
-        income_start_date=date(2024, 1, 1),
-        income_end_date=date(2024, 12, 31),
+def sample_comp_package() -> CompensationPackage:
+    return CompensationPackage(
+        employee_id="EMP123",
+        start_date=date(2024, 1, 1),
+        base_salary_history=[
+            BaseSalaryChange(
+                effective_date=date(2024, 1, 1),
+                annual_amount=Currency(amount=100_000_00, code=CurrencyCode.USD),
+            )
+        ],
+        bonus_payments=[
+            BonusPayment(
+                date=date(2024, 6, 1),
+                amount=Currency(amount=10_000_00, code=CurrencyCode.USD),
+                type="performance",
+            )
+        ],
+        stock_grants=[
+            StockGrant(
+                grant_date=date(2024, 1, 1),
+                total_shares=12000,
+                price_per_share=Currency(amount=10_00, code=CurrencyCode.USD),
+                vesting_schedule_type=VestingScheduleType.MONTHLY,
+                vesting_start_date=date(2024, 1, 1),
+                vesting_period_months=12,
+                cliff_months=0,
+            )
+        ],
+        signing_bonuses=[
+            SigningBonus(
+                payment_date=date(2024, 1, 1),
+                amount=Currency(amount=20_000_00, code=CurrencyCode.USD),
+            )
+        ],
     )
 
 
-@pytest.fixture
-def sample_base_salary(sample_periodic_source):
-    return ModifiablePeriodicIncomeSource(
-        name="Base Salary",
-        description="Base salary progression",
-        sources=[sample_periodic_source],
-    )
-
-
-@pytest.fixture
-def sample_signing_bonus():
-    return SingletonIncomeSource(
-        amt=Currency(code=CurrencyCode.USD, amount=1000000),  # $10,000
-        name="Sign-on Bonus",
-        description="One-time signing bonus",
-        income_date=date(2024, 1, 1),
-    )
-
-
-def test_job_creation_minimal(sample_base_salary):
-    # Test creation with only required fields
+def test_create_valid_job(sample_comp_package):
     job = Job(
         name="Software Engineer",
-        start_date=date(2024, 1, 1),
-        base_salary=sample_base_salary,
+        comp_package=sample_comp_package,
     )
 
     assert job.name == "Software Engineer"
-    assert job.start_date == date(2024, 1, 1)
-    assert job.end_date is None
-    assert job.base_salary == sample_base_salary
-    assert job.bonus_salary is None
-    assert len(job.stock_income) == 0
-    assert len(job.signing_bonus) == 0
+    assert job.comp_package == sample_comp_package
 
 
-def test_job_creation_full(
-    sample_base_salary, sample_signing_bonus, sample_periodic_source
-):
-    # Create bonus salary
-    bonus_salary = ModifiablePeriodicIncomeSource(
-        name="Annual Bonus",
-        description="Annual performance bonus",
-        sources=[sample_periodic_source],
-    )
-
-    # Create stock grant
-    stock_grant = PeriodicIncomeSource(
-        amt=Currency(code=CurrencyCode.USD, amount=500000),  # $5,000
-        name="RSU Grant",
-        description="Restricted Stock Units",
-        period=timedelta(days=365),  # Annual vesting
-        income_start_date=date(2024, 1, 1),
-        income_end_date=date(2027, 12, 31),
-    )
-
-    # Test creation with all fields
-    job = Job(
-        name="Senior Software Engineer",
-        start_date=date(2024, 1, 1),
-        end_date=date(2027, 12, 31),
-        base_salary=sample_base_salary,
-        bonus_salary=bonus_salary,
-        stock_income=[stock_grant],
-        signing_bonus=[sample_signing_bonus],
-    )
-
-    assert job.name == "Senior Software Engineer"
-    assert job.start_date == date(2024, 1, 1)
-    assert job.end_date == date(2027, 12, 31)
-    assert job.base_salary == sample_base_salary
-    assert job.bonus_salary == bonus_salary
-    assert len(job.stock_income) == 1
-    assert job.stock_income[0] == stock_grant
-    assert len(job.signing_bonus) == 1
-    assert job.signing_bonus[0] == sample_signing_bonus
-
-
-def test_job_invalid_dates():
-    # Test that end_date cannot be before start_date
+def test_required_fields():
     with pytest.raises(ValueError):
-        Job(
-            name="Invalid Job",
-            start_date=date(2024, 12, 31),
-            end_date=date(2024, 1, 1),
-            base_salary=ModifiablePeriodicIncomeSource(
-                name="Base",
-                description="Base salary",
-                sources=[],
-            ),
-        )
+        Job(name="Missing Fields")  # type: ignore
 
 
-def test_job_builder_methods(
-    sample_base_salary, sample_signing_bonus, sample_periodic_source
-):
-    # Create a job with minimal fields
-    job = Job(
-        name="Software Engineer",
-        start_date=date(2024, 1, 1),
-        base_salary=ModifiablePeriodicIncomeSource(
-            name="Base Salary",
-            description="Base salary progression",
-            sources=[sample_base_salary.sources[0]],
-        ),
-    )
-
-    # Test add_base_salary
-    job.add_base_salary(sample_periodic_source)
-    assert len(job.base_salary.sources) == 2
-    assert job.base_salary.sources[0] == sample_base_salary.sources[0]
-    assert job.base_salary.sources[1] == sample_periodic_source
-
-    # Test add_bonus_salary
-    bonus_source = PeriodicIncomeSource(
-        amt=Currency(code=CurrencyCode.USD, amount=2000000),  # $20,000
-        name="Annual Bonus 2024",
-        description="2024 performance bonus",
-        period=timedelta(days=365),
-        income_start_date=date(2024, 1, 1),
-        income_end_date=date(2024, 12, 31),
-    )
-    job.add_bonus_salary(bonus_source)
-    assert job.bonus_salary is not None
-    assert len(job.bonus_salary.sources) == 2
-    assert job.bonus_salary.sources[1] == bonus_source
-
-    # Test add_stock_income
-    stock_grant = PeriodicIncomeSource(
-        amt=Currency(code=CurrencyCode.USD, amount=500000),
-        name="RSU Grant",
-        description="Restricted Stock Units",
-        period=timedelta(days=365),
-        income_start_date=date(2024, 1, 1),
-        income_end_date=date(2027, 12, 31),
-    )
-    job.add_stock_income(stock_grant)
-    assert len(job.stock_income) == 1
-    assert job.stock_income[0] == stock_grant
-
-    # Test add_signing_bonus
-    job.add_signing_bonus(sample_signing_bonus)
-    assert len(job.signing_bonus) == 1
-    assert job.signing_bonus[0] == sample_signing_bonus
-
-
-def test_add_multiple_bonus_salaries(sample_base_salary, sample_periodic_source):
-    job = Job(
-        name="Software Engineer",
-        start_date=date(2024, 1, 1),
-        base_salary=ModifiablePeriodicIncomeSource(
-            name="Base Salary",
-            description="Base salary progression",
-            sources=[sample_base_salary.sources[0]],
-        ),
-    )
-
-    bonus_2024 = PeriodicIncomeSource(
-        amt=Currency(code=CurrencyCode.USD, amount=2000000),
-        name="2024 Bonus",
-        description="2024 performance bonus",
-        period=timedelta(days=365),
-        income_start_date=date(2024, 1, 1),
-        income_end_date=date(2024, 12, 31),
-    )
-
-    bonus_2025 = PeriodicIncomeSource(
-        amt=Currency(code=CurrencyCode.USD, amount=2500000),
-        name="2025 Bonus",
-        description="2025 performance bonus",
-        period=timedelta(days=365),
-        income_start_date=date(2025, 1, 1),
-        income_end_date=date(2025, 12, 31),
-    )
-
-    job.add_bonus_salary(bonus_2024)
-    job.add_bonus_salary(bonus_2025)
-
-    assert job.bonus_salary is not None
-    assert len(job.bonus_salary.sources) == 3
-    assert job.bonus_salary.sources[1] == bonus_2024
-    assert job.bonus_salary.sources[2] == bonus_2025
+def test_job_inheritance():
+    """Test that Job inherits all properties from JobBase"""
+    job_dict = Job.model_json_schema()["properties"]
+    assert "name" in job_dict
+    assert "comp_package" in job_dict

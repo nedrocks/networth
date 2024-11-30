@@ -1,4 +1,6 @@
 from datetime import date, timedelta
+from typing import Optional
+import typing
 from typing_extensions import Self
 from pydantic import field_validator, model_validator
 
@@ -21,7 +23,7 @@ class PeriodicIncomeSource(BaseIncomeSource):
     amt: "Currency"
 
     income_start_date: date
-    income_end_date: date
+    income_end_date: Optional[date] = None
 
     @model_validator(mode="after")
     def validate_period(self) -> Self:
@@ -31,7 +33,7 @@ class PeriodicIncomeSource(BaseIncomeSource):
 
     @model_validator(mode="after")
     def validate_dates(self) -> Self:
-        if self.income_start_date > self.income_end_date:
+        if self.income_end_date and self.income_start_date > self.income_end_date:
             raise ValueError("Income start date must be before income end date")
         return self
 
@@ -58,9 +60,12 @@ class ModifiablePeriodicIncomeSource(BaseIncomeSource):
             raise ValueError("Must have at least one source")
 
         for i in range(1, len(sources)):
-            if sources[i].income_start_date < sources[i - 1].income_end_date:
+            if sources[i - 1].income_end_date is None:
+                raise ValueError("Non terminal sources must have an end date")
+            end_date: date = typing.cast(date, sources[i - 1].income_end_date)
+            if sources[i].income_start_date < end_date:
                 raise ValueError("Sources must be in order and not overlap")
-            if (sources[i].income_start_date - sources[i - 1].income_end_date).days > 1:
+            elif (sources[i].income_start_date - end_date).days > 1:
                 raise ValueError("Sources must be contiguous")
         return sources
 
