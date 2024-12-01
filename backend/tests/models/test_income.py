@@ -1,7 +1,7 @@
 from datetime import date
 from networth.models.income import Income, JobIncome
 
-from .test_util.factories import JobFactory
+from ..test_util.factories import JobFactory
 
 
 def test_multiple_job_income():
